@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+{% block title %}Panel - Firewall{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h2><i class="bi bi-speedometer2"></i> Firewall Panel</h2>
+        <hr>
+    </div>
+</div>
+
+<!-- Statistika kartları -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card bg-danger text-white shadow">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title">Bloklanmış Domainlər</h6>
+                        <h2 class="mb-0">{{ stats.blocked_domains_count }}</h2>
+                    </div>
+                    <i class="bi bi-globe" style="font-size: 2.5rem; opacity: 0.7;"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-warning text-dark shadow">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title">Bloklanmış IP-lər</h6>
+                        <h2 class="mb-0">{{ stats.blocked_ips_count }}</h2>
+                    </div>
+                    <i class="bi bi-hdd-network" style="font-size: 2.5rem; opacity: 0.7;"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-success text-white shadow">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title">Whitelist</h6>
+                        <h2 class="mb-0">{{ stats.whitelist_count }}</h2>
+                    </div>
+                    <i class="bi bi-check-circle" style="font-size: 2.5rem; opacity: 0.7;"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-info text-white shadow">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-title">Ümumi Qaydalar</h6>
+                        <h2 class="mb-0">{{ stats.total_rules }}</h2>
+                    </div>
+                    <i class="bi bi-shield-check" style="font-size: 2.5rem; opacity: 0.7;"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Engine Status -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card shadow">
+            <div class="card-header">
+                <h5><i class="bi bi-cpu"></i> Firewall Engine Statusu</h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-sm">
+                    <tr>
+                        <td><strong>Status:</strong></td>
+                        <td>
+                            {% if engine_status.active %}
+                            <span class="badge bg-success">Aktiv</span>
+                            {% else %}
+                            <span class="badge bg-secondary">Qeyri-aktiv</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><strong>İnterfeys:</strong></td>
+                        <td>{{ engine_status.interface }}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Aktiv Qaydalar:</strong></td>
+                        <td>{{ engine_status.rule_count }}</td>
+                    </tr>
+                </table>
+                <form method="POST" action="{{ url_for('dashboard.sync_rules') }}">
+                    <button type="submit" class="btn btn-primary btn-sm">
+                        <i class="bi bi-arrow-repeat"></i> Qaydaları Sinxronlaşdır
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card shadow">
+            <div class="card-header">
+                <h5><i class="bi bi-info-circle"></i> Sistem Məlumatları</h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-sm">
+                    <tr>
+                        <td><strong>Son Yeniləmə:</strong></td>
+                        <td>{{ stats.last_updated or 'N/A' }}</td>
+                    </tr>
+                    <tr>
+                        <td><strong>Domain Blokları:</strong></td>
+                        <td>{{ stats.blocked_domains_count }} (HTTP + HTTPS)</td>
+                    </tr>
+                    <tr>
+                        <td><strong>IP Blokları:</strong></td>
+                        <td>{{ stats.blocked_ips_count }} (ingress + egress)</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- İptables qaydaları -->
+<div class="row">
+    <div class="col-12">
+        <div class="card shadow">
+            <div class="card-header">
+                <h5><i class="bi bi-terminal"></i> Aktiv iptables Qaydaları</h5>
+            </div>
+            <div class="card-body">
+                <pre class="bg-dark text-light p-3 rounded" style="max-height: 300px; overflow-y: auto;">{{ engine_status.rules_preview }}</pre>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

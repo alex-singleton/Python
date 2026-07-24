@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+{% block title %}Domain Bloklama - Firewall{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h2><i class="bi bi-globe"></i> Domain Bloklama</h2>
+        <p class="text-muted">HTTP və HTTPS domainlərini blokla (SNI + Host header + DNS)</p>
+        <hr>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Sol tərəf: Əlavə etmə formaları -->
+    <div class="col-md-5">
+        <!-- Tək domain -->
+        <div class="card shadow mb-3">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="bi bi-plus-circle"></i> Tək Domain Blokla</h6>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('domains.block_single') }}">
+                    <div class="input-group">
+                        <input type="text" class="form-control" name="domain" 
+                               placeholder="example.com" required>
+                        <button type="submit" class="btn btn-danger">
+                            <i class="bi bi-x-circle"></i> Blokla
+                        </button>
+                    </div>
+                    <small class="text-muted">Subdomain-lər avtomatik bloklanır</small>
+                </form>
+            </div>
+        </div>
+
+        <!-- Siyahı ilə -->
+        <div class="card shadow mb-3">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="bi bi-list-ul"></i> Siyahı ilə Blokla</h6>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('domains.block_list') }}">
+                    <div class="mb-2">
+                        <textarea class="form-control" name="domains_list" rows="5"
+                                  placeholder="example.com&#10;malware-site.net&#10;tracking.io&#10;# Şərh sətri (keçilir)"></textarea>
+                    </div>
+                    <small class="text-muted mb-2 d-block">Hər sətirdə bir domain. # ilə başlayan sətirlər keçilir.</small>
+                    <button type="submit" class="btn btn-danger w-100">
+                        <i class="bi bi-x-circle"></i> Siyahını Blokla
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Fayl ilə -->
+        <div class="card shadow mb-3">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="bi bi-file-earmark-text"></i> Fayldan Blokla</h6>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('domains.block_file') }}" enctype="multipart/form-data">
+                    <div class="mb-2">
+                        <input type="file" class="form-control" name="domains_file" 
+                               accept=".txt,.csv,.list" required>
+                    </div>
+                    <small class="text-muted mb-2 d-block">TXT fayl (hər sətirdə bir domain)</small>
+                    <button type="submit" class="btn btn-danger w-100">
+                        <i class="bi bi-upload"></i> Faylı Yüklə və Blokla
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sağ tərəf: Bloklanmış domainlər siyahısı -->
+    <div class="col-md-7">
+        <div class="card shadow">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h6 class="mb-0">
+                    <i class="bi bi-list-check"></i> Bloklanmış Domainlər 
+                    <span class="badge bg-danger">{{ blocked_domains|length }}</span>
+                </h6>
+                {% if blocked_domains %}
+                <form method="POST" action="{{ url_for('domains.unblock_all') }}" 
+                      onsubmit="return confirm('Bütün domain blokları silinəcək. Əminsiniz?')">
+                    <button type="submit" class="btn btn-outline-danger btn-sm">
+                        <i class="bi bi-trash"></i> Hamısını Sil
+                    </button>
+                </form>
+                {% endif %}
+            </div>
+            <div class="card-body scrollable-list">
+                {% if blocked_domains %}
+                <table class="table table-sm table-hover">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Domain</th>
+                            <th>Əməliyyat</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for domain in blocked_domains %}
+                        <tr>
+                            <td>{{ loop.index }}</td>
+                            <td><code>{{ domain }}</code></td>
+                            <td>
+                                <form method="POST" action="{{ url_for('domains.unblock', domain=domain) }}" style="display:inline;">
+                                    <button type="submit" class="btn btn-outline-success btn-action" 
+                                            title="Bloku götür">
+                                        <i class="bi bi-check-lg"></i>
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <div class="text-center text-muted py-4">
+                    <i class="bi bi-shield-check" style="font-size: 3rem;"></i>
+                    <p class="mt-2">Heç bir domain bloklanmayıb</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

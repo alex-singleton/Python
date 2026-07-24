@@ -1,0 +1,23 @@
+[Unit]
+Description=VPN Firewall Panel
+After=network.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+Group=root
+WorkingDirectory=/www/wwwroot/firewall
+ExecStart=/usr/bin/python3 /www/wwwroot/firewall/run.py --host 0.0.0.0 --port 5000
+ExecStop=/bin/kill -SIGTERM $MAINPID
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+# Mühit dəyişənləri
+Environment=FIREWALL_SECRET_KEY=your-secret-key-here
+Environment=FIREWALL_DEBUG=False
+
+[Install]
+WantedBy=multi-user.target

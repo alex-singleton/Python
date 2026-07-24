@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+{% block title %}IP Bloklama - Firewall{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h2><i class="bi bi-hdd-network"></i> IP Bloklama</h2>
+        <p class="text-muted">IP ünvanlarını iptables vasitəsilə blokla (ingress + egress)</p>
+        <hr>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Sol tərəf: Əlavə etmə formaları -->
+    <div class="col-md-5">
+        <!-- Tək IP -->
+        <div class="card shadow mb-3">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="bi bi-plus-circle"></i> Tək IP Blokla</h6>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('ips.block_single') }}">
+                    <div class="input-group">
+                        <input type="text" class="form-control" name="ip" 
+                               placeholder="192.168.1.100" required
+                               pattern="[0-9./:]+"
+                               title="IP ünvanı daxil edin (məs: 192.168.1.100)">
+                        <button type="submit" class="btn btn-danger">
+                            <i class="bi bi-x-circle"></i> Blokla
+                        </button>
+                    </div>
+                    <small class="text-muted">IPv4, CIDR (192.168.1.0/24) dəstəklənir</small>
+                </form>
+            </div>
+        </div>
+
+        <!-- Siyahı ilə -->
+        <div class="card shadow mb-3">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="bi bi-list-ul"></i> Siyahı ilə Blokla</h6>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('ips.block_list') }}">
+                    <div class="mb-2">
+                        <textarea class="form-control" name="ips_list" rows="5"
+                                  placeholder="192.168.1.100&#10;10.0.0.50&#10;172.16.0.0/16&#10;# Şərh sətri"></textarea>
+                    </div>
+                    <small class="text-muted mb-2 d-block">Hər sətirdə bir IP. # ilə başlayan sətirlər keçilir.</small>
+                    <button type="submit" class="btn btn-danger w-100">
+                        <i class="bi bi-x-circle"></i> Siyahını Blokla
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Fayl ilə -->
+        <div class="card shadow mb-3">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="bi bi-file-earmark-text"></i> Fayldan Blokla</h6>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('ips.block_file') }}" enctype="multipart/form-data">
+                    <div class="mb-2">
+                        <input type="file" class="form-control" name="ips_file" 
+                               accept=".txt,.csv,.list" required>
+                    </div>
+                    <small class="text-muted mb-2 d-block">TXT fayl (hər sətirdə bir IP)</small>
+                    <button type="submit" class="btn btn-danger w-100">
+                        <i class="bi bi-upload"></i> Faylı Yüklə və Blokla
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sağ tərəf: Bloklanmış IP-lər siyahısı -->
+    <div class="col-md-7">
+        <div class="card shadow">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h6 class="mb-0">
+                    <i class="bi bi-list-check"></i> Bloklanmış IP-lər 
+                    <span class="badge bg-warning text-dark">{{ blocked_ips|length }}</span>
+                </h6>
+                {% if blocked_ips %}
+                <form method="POST" action="{{ url_for('ips.unblock_all') }}" 
+                      onsubmit="return confirm('Bütün IP blokları silinəcək. Əminsiniz?')">
+                    <button type="submit" class="btn btn-outline-danger btn-sm">
+                        <i class="bi bi-trash"></i> Hamısını Sil
+                    </button>
+                </form>
+                {% endif %}
+            </div>
+            <div class="card-body scrollable-list">
+                {% if blocked_ips %}
+                <table class="table table-sm table-hover">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>IP Ünvanı</th>
+                            <th>Əməliyyat</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for ip in blocked_ips %}
+                        <tr>
+                            <td>{{ loop.index }}</td>
+                            <td><code>{{ ip }}</code></td>
+                            <td>
+                                <form method="POST" action="{{ url_for('ips.unblock', ip=ip) }}" style="display:inline;">
+                                    <button type="submit" class="btn btn-outline-success btn-action" 
+                                            title="Bloku götür">
+                                        <i class="bi bi-check-lg"></i>
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <div class="text-center text-muted py-4">
+                    <i class="bi bi-shield-check" style="font-size: 3rem;"></i>
+                    <p class="mt-2">Heç bir IP bloklanmayıb</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

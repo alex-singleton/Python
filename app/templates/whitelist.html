@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+{% block title %}Whitelist - Firewall{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h2><i class="bi bi-check-circle"></i> Whitelist</h2>
+        <p class="text-muted">İcazə verilən domain və IP-lər (bloklanma qaydalarından müstəsna)</p>
+        <hr>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Sol tərəf: Əlavə etmə formaları -->
+    <div class="col-md-5">
+        <!-- Tək element -->
+        <div class="card shadow mb-3">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="bi bi-plus-circle"></i> Tək Element Əlavə Et</h6>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('whitelist.add_single') }}">
+                    <div class="input-group">
+                        <input type="text" class="form-control" name="item" 
+                               placeholder="example.com və ya 192.168.1.1" required>
+                        <button type="submit" class="btn btn-success">
+                            <i class="bi bi-plus-lg"></i> Əlavə Et
+                        </button>
+                    </div>
+                    <small class="text-muted">Domain və ya IP ünvanı. Blok siyahısından avtomatik silinir.</small>
+                </form>
+            </div>
+        </div>
+
+        <!-- Siyahı ilə -->
+        <div class="card shadow mb-3">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="bi bi-list-ul"></i> Siyahı ilə Əlavə Et</h6>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('whitelist.add_list') }}">
+                    <div class="mb-2">
+                        <textarea class="form-control" name="items_list" rows="5"
+                                  placeholder="google.com&#10;8.8.8.8&#10;github.com&#10;# Şərh sətri"></textarea>
+                    </div>
+                    <small class="text-muted mb-2 d-block">Hər sətirdə bir domain/IP. # ilə başlayan sətirlər keçilir.</small>
+                    <button type="submit" class="btn btn-success w-100">
+                        <i class="bi bi-plus-lg"></i> Siyahını Əlavə Et
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Fayl ilə -->
+        <div class="card shadow mb-3">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="bi bi-file-earmark-text"></i> Fayldan Əlavə Et</h6>
+            </div>
+            <div class="card-body">
+                <form method="POST" action="{{ url_for('whitelist.add_file') }}" enctype="multipart/form-data">
+                    <div class="mb-2">
+                        <input type="file" class="form-control" name="whitelist_file" 
+                               accept=".txt,.csv,.list" required>
+                    </div>
+                    <small class="text-muted mb-2 d-block">TXT fayl (hər sətirdə bir domain/IP)</small>
+                    <button type="submit" class="btn btn-success w-100">
+                        <i class="bi bi-upload"></i> Faylı Yüklə və Əlavə Et
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Məlumat kartı -->
+        <div class="card shadow border-info">
+            <div class="card-body">
+                <h6><i class="bi bi-info-circle text-info"></i> Whitelist Haqqında</h6>
+                <ul class="small mb-0">
+                    <li>Whitelist-ə əlavə edilən elementlər blok siyahılarından avtomatik silinir</li>
+                    <li>Whitelist qaydaları blok qaydalarından üstündür</li>
+                    <li>Həm domain, həm IP əlavə edə bilərsiniz</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sağ tərəf: Whitelist siyahısı -->
+    <div class="col-md-7">
+        <div class="card shadow">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h6 class="mb-0">
+                    <i class="bi bi-list-check"></i> Whitelist Elementləri 
+                    <span class="badge bg-success">{{ whitelist_items|length }}</span>
+                </h6>
+                {% if whitelist_items %}
+                <form method="POST" action="{{ url_for('whitelist.remove_all') }}" 
+                      onsubmit="return confirm('Bütün whitelist elementləri silinəcək. Əminsiniz?')">
+                    <button type="submit" class="btn btn-outline-danger btn-sm">
+                        <i class="bi bi-trash"></i> Hamısını Sil
+                    </button>
+                </form>
+                {% endif %}
+            </div>
+            <div class="card-body scrollable-list">
+                {% if whitelist_items %}
+                <table class="table table-sm table-hover">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Domain / IP</th>
+                            <th>Əməliyyat</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in whitelist_items %}
+                        <tr>
+                            <td>{{ loop.index }}</td>
+                            <td><code>{{ item }}</code></td>
+                            <td>
+                                <form method="POST" action="{{ url_for('whitelist.remove', item=item) }}" style="display:inline;">
+                                    <button type="submit" class="btn btn-outline-danger btn-action" 
+                                            title="Whitelist-dən sil">
+                                        <i class="bi bi-x-lg"></i>
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <div class="text-center text-muted py-4">
+                    <i class="bi bi-list" style="font-size: 3rem;"></i>
+                    <p class="mt-2">Whitelist boşdur</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

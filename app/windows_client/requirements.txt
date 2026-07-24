@@ -1,0 +1,4 @@
+PyQt5==5.15.10
+requests==2.31.0
+PySocks==1.7.1
+pyinstaller==6.3.0
