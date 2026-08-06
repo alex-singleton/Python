@@ -15,7 +15,7 @@ def create_app():
 
     login_manager.init_app(app)
     login_manager.login_view = "auth.login"
-    login_manager.login_message = "Bu səhifəyə daxil olmaq üçün giriş edin."
+    login_manager.login_message = "Please log in to access this page."
 
     # Register blueprints
     from app.routes.auth import auth_bp

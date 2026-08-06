@@ -1,185 +1,185 @@
 # VPN Firewall Panel
 
-Python əsaslı VPN firewall sistemi. Domain bloklama (HTTPS daxil), IP bloklama, whitelist idarəetmə və veb admin paneli.
+Python-based VPN firewall system. Domain blocking (including HTTPS), IP blocking, whitelist management and web admin panel.
 
-## Xüsusiyyətlər
+## Features
 
-- **Domain Bloklama** - HTTP + HTTPS (TLS SNI string match) + DNS sorğuları
-- **IP Bloklama** - iptables ilə ingress/egress bloklama, CIDR dəstəyi
-- **Whitelist** - İcazə verilən domain/IP siyahısı (blok qaydalarından üstün)
-- **Veb Panel** - Bootstrap 5 əsaslı responsive admin interfeysi
-- **Admin Login** - Parol dəyişmə, session idarəetmə
-- **Subdomain Dəstəyi** - `example.com` bloklananda `sub.example.com` da bloklanır
-- **Fayl Yükləmə** - TXT fayllardan toplu import
-- **Systemd Service** - Avtomatik başlanğıc və dayanma
+- **Domain Blocking** - HTTP + HTTPS (TLS SNI string match) + DNS queries
+- **IP Blocking** - iptables ingress/egress blocking, CIDR support
+- **Whitelist** - Allowed domain/IP list (overrides block rules)
+- **Web Panel** - Bootstrap 5 based responsive admin interface
+- **Admin Login** - Password change, session management
+- **Subdomain Support** - Blocking `example.com` also blocks `sub.example.com`
+- **File Upload** - Bulk import from TXT files
+- **Systemd Service** - Automatic start and stop
 
-## Tələblər
+## Requirements
 
-- Linux (Ubuntu/Debian tövsiyə olunur)
+- Linux (Ubuntu/Debian recommended)
 - Python 3.8+
 - iptables
-- Root hüquqları (iptables üçün)
+- Root privileges (for iptables)
 
-## Sürətli Quraşdırma
+## Quick Installation
 
 ```bash
-# Reponu klonla
+# Clone the repo
 git clone <repo-url> /opt/firewall
 cd /opt/firewall
 
-# Avtomatik quraşdırma
+# Automatic installation
 sudo bash install.sh
 ```
 
-## Əl ilə Quraşdırma
+## Manual Installation
 
 ```bash
-# Lazımi paketlər
+# Required packages
 sudo apt install python3 python3-pip python3-venv iptables
 
-# Virtual mühit
+# Virtual environment
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
 
-# Data qovluqları
+# Data directories
 mkdir -p data logs
 
-# İşə sal
+# Run
 sudo python3 run.py
 ```
 
-## İstifadə
+## Usage
 
-### Başlatma
+### Starting
 
 ```bash
-# Standart (port 9450)
+# Standard (port 9450)
 sudo python3 run.py
 
-# Xüsusi port
+# Custom port
 sudo python3 run.py --port 8080
 
-# Debug rejimi
+# Debug mode
 sudo python3 run.py --debug
 
-# Engine-siz (yalnız panel)
+# Without engine (panel only)
 python3 run.py --no-engine
 ```
 
-### Systemd ilə
+### With Systemd
 
 ```bash
-sudo systemctl start firewall      # Başlat
-sudo systemctl stop firewall       # Dayandır
-sudo systemctl restart firewall    # Yenidən başlat
+sudo systemctl start firewall      # Start
+sudo systemctl stop firewall       # Stop
+sudo systemctl restart firewall    # Restart
 sudo systemctl status firewall     # Status
-sudo journalctl -u firewall -f     # Loglar
+sudo journalctl -u firewall -f     # Logs
 ```
 
-### Veb Panel
+### Web Panel
 
-Brauzer ilə `http://server-ip:9450` ünvanına daxil olun.
+Open `http://server-ip:9450` in your browser.
 
-**Default giriş:**
-- İstifadəçi: `admin`
-- Parol: `admin123`
+**Default credentials:**
+- Username: `admin`
+- Password: `admin123`
 
-> İlk girişdən sonra parolu mütləq dəyişdirin!
+> Make sure to change the password after first login!
 
-## Bloklama Metodları
+## Blocking Methods
 
-### Domain Bloklama (HTTPS daxil)
+### Domain Blocking (including HTTPS)
 
-Üç səviyyədə bloklama:
-1. **TLS SNI** - HTTPS trafikində Server Name Indication sahəsini yoxlayır (port 443)
-2. **HTTP Host** - HTTP trafikində Host header-i yoxlayır (port 80)
-3. **DNS** - Domain adına DNS sorğularını bloklayır (port 53)
+Three levels of blocking:
+1. **TLS SNI** - Inspects Server Name Indication in HTTPS traffic (port 443)
+2. **HTTP Host** - Inspects Host header in HTTP traffic (port 80)
+3. **DNS** - Blocks DNS queries for the domain name (port 53)
 
-### IP Bloklama
+### IP Blocking
 
-- iptables `DROP` qaydası ilə həm gələn, həm gedən trafik bloklanır
-- CIDR notation dəstəklənir (məs: `192.168.1.0/24`)
+- Blocks both incoming and outgoing traffic with iptables `DROP` rule
+- CIDR notation supported (e.g. `192.168.1.0/24`)
 
 ### Whitelist
 
-- Whitelist-ə əlavə edilən elementlər avtomatik blok siyahısından silinir
-- Whitelist qaydaları `ACCEPT` olaraq chain-in əvvəlinə əlavə edilir
-- Blok qaydalarından prioritetlidir
+- Items added to whitelist are automatically removed from block lists
+- Whitelist rules are added as `ACCEPT` at the beginning of the chain
+- Takes priority over block rules
 
-## Layihə Strukturu
+## Project Structure
 
 ```
 Firewall/
-├── run.py                  # Əsas başlanğıc skripti
-├── config.py               # Konfiqurasiya
-├── requirements.txt        # Python paketləri
-├── install.sh              # Quraşdırma skripti
-├── firewall.service        # Systemd service faylı
+├── run.py                  # Main startup script
+├── config.py               # Configuration
+├── requirements.txt        # Python packages
+├── install.sh              # Installation script
+├── firewall.service        # Systemd service file
 ├── app/
 │   ├── __init__.py         # Flask app factory
 │   ├── models.py           # Admin model
-│   ├── firewall_core.py    # Bloklama məntiqi
-│   ├── firewall_engine.py  # iptables inteqrasiyası
+│   ├── firewall_core.py    # Blocking logic
+│   ├── firewall_engine.py  # iptables integration
 │   ├── routes/
 │   │   ├── auth.py         # Login/logout
-│   │   ├── dashboard.py    # Panel səhifəsi
-│   │   ├── domains.py      # Domain bloklama
-│   │   ├── ips.py          # IP bloklama
+│   │   ├── dashboard.py    # Dashboard page
+│   │   ├── domains.py      # Domain blocking
+│   │   ├── ips.py          # IP blocking
 │   │   └── whitelist.py    # Whitelist
-│   ├── templates/          # HTML şablonlar
+│   ├── templates/          # HTML templates
 │   └── static/css/         # CSS
-├── data/                   # Blok siyahıları
+├── data/                   # Block lists
 │   ├── blocked_domains.txt
 │   ├── blocked_ips.txt
 │   ├── whitelist.txt
 │   └── admin.json
-└── logs/                   # Log faylları
+└── logs/                   # Log files
     └── firewall.log
 ```
 
-## API İstifadə Nümunələri
+## API Usage Examples
 
-### Blok Siyahısı Fayl Formatı
+### Block List File Format
 
 ```text
-# Bloklanacaq domainlər (hər sətirdə bir domain)
-# Bu şərh sətridir - keçilir
+# Domains to block (one domain per line)
+# This is a comment line - will be skipped
 example.com
 malware-site.net
 tracking.io
 ads.network.com
 ```
 
-### IP Siyahısı Fayl Formatı
+### IP List File Format
 
 ```text
-# Bloklanacaq IP-lər
+# IPs to block
 192.168.1.100
 10.0.0.50
 172.16.0.0/16
-# Botnet IP-ləri
+# Botnet IPs
 203.0.113.0/24
 ```
 
-## Təhlükəsizlik Qeydləri
+## Security Notes
 
-- Default parolu mütləq dəyişdirin
-- `FIREWALL_SECRET_KEY` mühit dəyişənini təyin edin
-- Panelə yalnız etibarlı şəbəkələrdən giriş verin
-- Mümkünsə HTTPS (nginx reverse proxy) arxasında işlədin
-- Mütəmadi olaraq logları yoxlayın
+- Make sure to change the default password
+- Set the `FIREWALL_SECRET_KEY` environment variable
+- Allow panel access only from trusted networks
+- Run behind HTTPS (nginx reverse proxy) if possible
+- Check logs regularly
 
-## Mühit Dəyişənləri
+## Environment Variables
 
-| Dəyişən | Təsvir | Default |
-|---------|--------|---------|
+| Variable | Description | Default |
+|----------|-------------|---------|
 | `FIREWALL_SECRET_KEY` | Flask secret key | `change-this-secret-key-in-production` |
-| `FIREWALL_DEBUG` | Debug rejimi | `False` |
-| `FIREWALL_INTERFACE` | VPN interfeysi | `tun0` |
-| `FIREWALL_WEB_PORT` | Veb panel portu | `9450` |
-| `FIREWALL_ADMIN_USER` | Admin istifadəçi adı | `admin` |
+| `FIREWALL_DEBUG` | Debug mode | `False` |
+| `FIREWALL_INTERFACE` | VPN interface | `tun0` |
+| `FIREWALL_WEB_PORT` | Web panel port | `9450` |
+| `FIREWALL_ADMIN_USER` | Admin username | `admin` |
 
-## Lisenziya
+## License
 
 MIT License

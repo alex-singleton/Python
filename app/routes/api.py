@@ -1,6 +1,6 @@
 """
-VPN API routes - Windows client üçün.
-Client login, connect, disconnect, status əmrləri.
+VPN API routes - for Windows client.
+Client login, connect, disconnect, status commands.
 """
 import uuid
 import time
@@ -9,29 +9,29 @@ from app.vpn_users import vpn_users
 
 api_bp = Blueprint("api", __name__, url_prefix="/api/v1")
 
-# Aktiv session-lar: {token: {username, connected_at, ip}}
+# Active sessions: {token: {username, connected_at, ip}}
 active_sessions = {}
 
 
 @api_bp.route("/login", methods=["POST"])
 def login():
-    """Client login - token qaytarır."""
+    """Client login - returns token."""
     data = request.get_json()
     if not data:
-        return jsonify({"success": False, "message": "JSON data tələb olunur"}), 400
+        return jsonify({"success": False, "message": "JSON data required"}), 400
 
     username = data.get("username", "")
     password = data.get("password", "")
 
     if not username or not password:
-        return jsonify({"success": False, "message": "İstifadəçi adı və parol lazımdır"}), 400
+        return jsonify({"success": False, "message": "Username and password required"}), 400
 
     success, message, user_data = vpn_users.authenticate(username, password)
 
     if not success:
         return jsonify({"success": False, "message": message}), 401
 
-    # Session yarat
+    # Create session
     token = user_data["token"]
     active_sessions[token] = {
         "username": username,
@@ -55,21 +55,21 @@ def login():
 
 @api_bp.route("/connect", methods=["POST"])
 def connect():
-    """VPN bağlantısını başlat."""
+    """Start VPN connection."""
     token = request.headers.get("Authorization", "").replace("Bearer ", "")
     if not token or token not in active_sessions:
-        return jsonify({"success": False, "message": "Yanlış və ya müddəti bitmiş token"}), 401
+        return jsonify({"success": False, "message": "Invalid or expired token"}), 401
 
     session = active_sessions[token]
     username = session["username"]
 
-    # Bağlantı statusunu yenilə
+    # Update connection status
     vpn_users.update_connection_status(username, True, request.remote_addr)
 
-    # Proxy konfiqurasiyasını qaytar
+    # Return proxy configuration
     return jsonify({
         "success": True,
-        "message": "Bağlantı quruldu",
+        "message": "Connected",
         "proxy": {
             "type": "socks5",
             "host": request.host.split(":")[0],
@@ -82,10 +82,10 @@ def connect():
 
 @api_bp.route("/disconnect", methods=["POST"])
 def disconnect():
-    """VPN bağlantısını kəs."""
+    """Disconnect VPN."""
     token = request.headers.get("Authorization", "").replace("Bearer ", "")
     if not token or token not in active_sessions:
-        return jsonify({"success": False, "message": "Yanlış token"}), 401
+        return jsonify({"success": False, "message": "Invalid token"}), 401
 
     session = active_sessions[token]
     username = session["username"]
@@ -93,15 +93,15 @@ def disconnect():
     vpn_users.update_connection_status(username, False)
     del active_sessions[token]
 
-    return jsonify({"success": True, "message": "Bağlantı kəsildi"})
+    return jsonify({"success": True, "message": "Disconnected"})
 
 
 @api_bp.route("/status", methods=["GET"])
 def status():
-    """Bağlantı statusu."""
+    """Connection status."""
     token = request.headers.get("Authorization", "").replace("Bearer ", "")
     if not token or token not in active_sessions:
-        return jsonify({"success": False, "connected": False, "message": "Bağlantı yoxdur"}), 401
+        return jsonify({"success": False, "connected": False, "message": "Not connected"}), 401
 
     session = active_sessions[token]
     username = session["username"]
@@ -122,5 +122,5 @@ def status():
 
 @api_bp.route("/ping", methods=["GET"])
 def ping():
-    """Server mövcudluq yoxlaması."""
+    """Server availability check."""
     return jsonify({"success": True, "message": "pong", "time": time.time()})

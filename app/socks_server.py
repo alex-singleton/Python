@@ -1,7 +1,7 @@
 """
-SOCKS5 Proxy Server - VPN tuneli üçün.
-İstifadəçi autentifikasiyası ilə SOCKS5 proxy.
-Firewall qaydalarını tətbiq edir.
+SOCKS5 Proxy Server - for VPN tunnel.
+SOCKS5 proxy with user authentication.
+Applies firewall rules.
 """
 import socket
 import struct
@@ -33,7 +33,7 @@ BUFFER_SIZE = 8192
 
 
 class SOCKS5Handler(threading.Thread):
-    """Tək SOCKS5 bağlantısını idarə edir."""
+    """Handles a single SOCKS5 connection."""
 
     def __init__(self, client_socket, client_addr):
         super().__init__(daemon=True)
@@ -49,12 +49,12 @@ class SOCKS5Handler(threading.Thread):
                 return
             self.handle_request()
         except Exception as e:
-            logger.debug(f"SOCKS5 xətası: {e}")
+            logger.debug(f"SOCKS5 error: {e}")
         finally:
             self.client.close()
 
     def handle_greeting(self):
-        """SOCKS5 greeting - auth method seçimi."""
+        """SOCKS5 greeting - auth method selection."""
         data = self.client.recv(256)
         if not data or len(data) < 3:
             return False
@@ -63,12 +63,12 @@ class SOCKS5Handler(threading.Thread):
         if version != SOCKS5_VERSION:
             return False
 
-        # Username/password auth tələb et
+        # Require username/password auth
         self.client.sendall(struct.pack("BB", SOCKS5_VERSION, AUTH_USERPASS))
         return True
 
     def handle_auth(self):
-        """İstifadəçi adı/parol autentifikasiyası."""
+        """Username/password authentication."""
         data = self.client.recv(256)
         if not data or len(data) < 5:
             self.client.sendall(struct.pack("BB", 0x01, 0x01))
@@ -80,7 +80,7 @@ class SOCKS5Handler(threading.Thread):
         plen = data[2 + ulen]
         password = data[3 + ulen:3 + ulen + plen].decode("utf-8", errors="ignore")
 
-        # Token əsaslı auth (API-dən gələn token parol kimi istifadə olunur)
+        # Token-based auth (token from API used as password)
         success, msg, _ = vpn_users.authenticate(username, password)
 
         if success:
@@ -90,11 +90,11 @@ class SOCKS5Handler(threading.Thread):
             return True
         else:
             self.client.sendall(struct.pack("BB", 0x01, 0x01))  # Failure
-            logger.warning(f"SOCKS5 auth uğursuz: {username} @ {self.client_addr[0]}")
+            logger.warning(f"SOCKS5 auth failed: {username} @ {self.client_addr[0]}")
             return False
 
     def handle_request(self):
-        """SOCKS5 connect sorğusu."""
+        """SOCKS5 connect request."""
         data = self.client.recv(256)
         if not data or len(data) < 7:
             return
@@ -107,7 +107,7 @@ class SOCKS5Handler(threading.Thread):
             self.send_reply(REPLY_GENERAL_FAILURE)
             return
 
-        # Hədəf ünvanı oxu
+        # Read destination address
         if atyp == ATYP_IPV4:
             dst_addr = socket.inet_ntoa(data[4:8])
             dst_port = struct.unpack("!H", data[8:10])[0]
@@ -122,19 +122,19 @@ class SOCKS5Handler(threading.Thread):
             self.send_reply(REPLY_GENERAL_FAILURE)
             return
 
-        # Firewall yoxlaması - domain bloklanıbmı?
+        # Firewall check - is domain blocked?
         if firewall.is_domain_blocked(dst_addr):
-            logger.info(f"BLOKLANIB: {self.username} -> {dst_addr}:{dst_port}")
+            logger.info(f"BLOCKED: {self.username} -> {dst_addr}:{dst_port}")
             self.send_reply(REPLY_NOT_ALLOWED)
             return
 
-        # Firewall yoxlaması - IP bloklanıbmı?
+        # Firewall check - is IP blocked?
         if firewall.is_ip_blocked(dst_addr):
-            logger.info(f"BLOKLANIB (IP): {self.username} -> {dst_addr}:{dst_port}")
+            logger.info(f"BLOCKED (IP): {self.username} -> {dst_addr}:{dst_port}")
             self.send_reply(REPLY_NOT_ALLOWED)
             return
 
-        # Uzaq serverə qoşul
+        # Connect to remote server
         try:
             remote = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             remote.settimeout(10)
@@ -144,16 +144,16 @@ class SOCKS5Handler(threading.Thread):
             self.send_reply(REPLY_HOST_UNREACHABLE)
             return
 
-        # Uğurlu cavab göndər
+        # Send success reply
         bind_addr = remote.getsockname()
         self.send_reply(REPLY_SUCCESS, bind_addr[0], bind_addr[1])
 
-        # Trafik relay
+        # Traffic relay
         self.relay(self.client, remote)
         remote.close()
 
     def relay(self, client, remote):
-        """İki socket arasında trafik ötür."""
+        """Relay traffic between two sockets."""
         total_bytes = 0
         try:
             while True:
@@ -175,12 +175,12 @@ class SOCKS5Handler(threading.Thread):
         except Exception:
             pass
         finally:
-            # Trafik sayğacını yenilə
+            # Update traffic counter
             if self.username and total_bytes > 0:
                 vpn_users.add_traffic(self.username, total_bytes)
 
     def send_reply(self, reply_code, bind_addr="0.0.0.0", bind_port=0):
-        """SOCKS5 cavab göndər."""
+        """Send SOCKS5 reply."""
         addr_bytes = socket.inet_aton(bind_addr)
         reply = struct.pack("!BBBB", SOCKS5_VERSION, reply_code, 0x00, ATYP_IPV4)
         reply += addr_bytes + struct.pack("!H", bind_port)
@@ -188,7 +188,7 @@ class SOCKS5Handler(threading.Thread):
 
 
 class SOCKS5Server:
-    """SOCKS5 proxy serveri."""
+    """SOCKS5 proxy server."""
 
     def __init__(self, host="0.0.0.0", port=1080):
         self.host = host
@@ -198,11 +198,11 @@ class SOCKS5Server:
         self.thread = None
 
     def start(self):
-        """Serveri başlat (arxa plan thread-ində)."""
+        """Start server (in background thread)."""
         self.running = True
         self.thread = threading.Thread(target=self._run, daemon=True)
         self.thread.start()
-        logger.info(f"SOCKS5 server başladıldı: {self.host}:{self.port}")
+        logger.info(f"SOCKS5 server started: {self.host}:{self.port}")
 
     def _run(self):
         """Server loop."""
@@ -221,14 +221,14 @@ class SOCKS5Server:
                 continue
             except Exception as e:
                 if self.running:
-                    logger.error(f"SOCKS5 accept xətası: {e}")
+                    logger.error(f"SOCKS5 accept error: {e}")
 
     def stop(self):
-        """Serveri dayandır."""
+        """Stop server."""
         self.running = False
         if self.server_socket:
             self.server_socket.close()
-        logger.info("SOCKS5 server dayandırıldı")
+        logger.info("SOCKS5 server stopped")
 
 
 # Singleton

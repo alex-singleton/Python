@@ -1,5 +1,5 @@
 """
-Domain bloklama routes - tək, siyahı, fayl ilə.
+Domain blocking routes - single, list, file.
 """
 from flask import Blueprint, render_template, redirect, url_for, request, flash
 from flask_login import login_required
@@ -19,10 +19,10 @@ def domains_page():
 @domains_bp.route("/block-single", methods=["POST"])
 @login_required
 def block_single():
-    """Tək domain blokla."""
+    """Block a single domain."""
     domain = request.form.get("domain", "").strip()
     if not domain:
-        flash("Domain daxil edin!", "danger")
+        flash("Please enter a domain!", "danger")
         return redirect(url_for("domains.domains_page"))
 
     success, msg = firewall.block_domain(domain)
@@ -37,10 +37,10 @@ def block_single():
 @domains_bp.route("/block-list", methods=["POST"])
 @login_required
 def block_list():
-    """Domain siyahısını blokla (textarea-dan)."""
+    """Block a list of domains (from textarea)."""
     domains_text = request.form.get("domains_list", "").strip()
     if not domains_text:
-        flash("Siyahı boşdur!", "danger")
+        flash("List is empty!", "danger")
         return redirect(url_for("domains.domains_page"))
 
     domains = [d.strip() for d in domains_text.splitlines() if d.strip()]
@@ -49,9 +49,9 @@ def block_list():
     for domain in added:
         engine.apply_domain_block(domain)
 
-    msg = f"{len(added)} domain bloklandı."
+    msg = f"{len(added)} domains blocked."
     if skipped:
-        msg += f" {len(skipped)} ədəd whitelist-də olduğu üçün keçildi."
+        msg += f" {len(skipped)} skipped (in whitelist)."
     flash(msg, "success" if added else "warning")
     return redirect(url_for("domains.domains_page"))
 
@@ -59,16 +59,16 @@ def block_list():
 @domains_bp.route("/block-file", methods=["POST"])
 @login_required
 def block_file():
-    """Fayldan domainləri blokla."""
+    """Block domains from file."""
     file = request.files.get("domains_file")
     if not file or file.filename == "":
-        flash("Fayl seçilməyib!", "danger")
+        flash("No file selected!", "danger")
         return redirect(url_for("domains.domains_page"))
 
     try:
         content = file.read().decode("utf-8")
     except UnicodeDecodeError:
-        flash("Fayl UTF-8 formatında olmalıdır!", "danger")
+        flash("File must be in UTF-8 format!", "danger")
         return redirect(url_for("domains.domains_page"))
 
     added, skipped = firewall.block_domains_from_file(content)
@@ -76,9 +76,9 @@ def block_file():
     for domain in added:
         engine.apply_domain_block(domain)
 
-    msg = f"{len(added)} domain fayldan bloklandı."
+    msg = f"{len(added)} domains blocked from file."
     if skipped:
-        msg += f" {len(skipped)} ədəd whitelist-də olduğu üçün keçildi."
+        msg += f" {len(skipped)} skipped (in whitelist)."
     flash(msg, "success" if added else "warning")
     return redirect(url_for("domains.domains_page"))
 
@@ -86,7 +86,7 @@ def block_file():
 @domains_bp.route("/unblock/<domain>", methods=["POST"])
 @login_required
 def unblock(domain):
-    """Domain blokunu götür."""
+    """Unblock a domain."""
     success, msg = firewall.unblock_domain(domain)
     if success:
         engine.remove_domain_block(domain)
@@ -99,7 +99,7 @@ def unblock(domain):
 @domains_bp.route("/unblock-all", methods=["POST"])
 @login_required
 def unblock_all():
-    """Bütün domain bloklarını götür."""
+    """Unblock all domains."""
     domains = firewall.get_all_blocked_domains()
     count = len(domains)
     for domain in domains:
@@ -107,5 +107,5 @@ def unblock_all():
         firewall.blocked_domains.discard(domain)
     from app.firewall_core import BLOCKED_DOMAINS_FILE
     firewall._save_file(BLOCKED_DOMAINS_FILE, firewall.blocked_domains)
-    flash(f"{count} domain blokdan çıxarıldı!", "success")
+    flash(f"{count} domains unblocked!", "success")
     return redirect(url_for("domains.domains_page"))

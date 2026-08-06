@@ -1,5 +1,5 @@
 """
-Dashboard route - Əsas panel səhifəsi.
+Dashboard route - Main panel page.
 """
 from flask import Blueprint, render_template, redirect, url_for, flash
 from flask_login import login_required
@@ -21,5 +21,5 @@ def index():
 @login_required
 def sync_rules():
     engine.sync_all_rules()
-    flash("Qaydalar uğurla sinxronlaşdırıldı!", "success")
+    flash("Rules synchronized successfully!", "success")
     return redirect(url_for("dashboard.index"))

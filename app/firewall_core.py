@@ -1,6 +1,6 @@
 """
 Firewall Core Module
-Domain bloklama, IP bloklama və whitelist idarəetmə məntiqi.
+Domain blocking, IP blocking and whitelist management logic.
 """
 import os
 import threading
@@ -18,7 +18,7 @@ WHITELIST_FILE = os.path.join(DATA_DIR, "whitelist.txt")
 
 
 class FirewallCore:
-    """Firewall əsas sinfi - domain, IP bloklama və whitelist idarəetməsi."""
+    """Core firewall class - domain, IP blocking and whitelist management."""
 
     def __init__(self):
         self._lock = threading.Lock()
@@ -35,29 +35,29 @@ class FirewallCore:
         self.load_all()
 
     def _ensure_data_files(self):
-        """Data fayllarının mövcudluğunu yoxla, yoxdursa yarat."""
+        """Check data files exist, create if not."""
         os.makedirs(DATA_DIR, exist_ok=True)
         for filepath in [BLOCKED_DOMAINS_FILE, BLOCKED_IPS_FILE, WHITELIST_FILE]:
             if not os.path.exists(filepath):
                 open(filepath, "w").close()
 
     # ─────────────────────────────────────────────
-    # YÜKLƏMƏ / SAXLAMA
+    # LOAD / SAVE
     # ─────────────────────────────────────────────
 
     def load_all(self):
-        """Bütün data fayllarını yüklə."""
+        """Load all data files."""
         self.blocked_domains = self._load_file(BLOCKED_DOMAINS_FILE)
         self.blocked_ips = self._load_file(BLOCKED_IPS_FILE)
         self.whitelist = self._load_file(WHITELIST_FILE)
         self.stats["last_updated"] = datetime.now().isoformat()
         logger.info(
-            f"Yükləndi: {len(self.blocked_domains)} domain, "
-            f"{len(self.blocked_ips)} IP, {len(self.whitelist)} whitelist"
+            f"Loaded: {len(self.blocked_domains)} domains, "
+            f"{len(self.blocked_ips)} IPs, {len(self.whitelist)} whitelist"
         )
 
     def _load_file(self, filepath):
-        """Fayldan sətirləri oxu, set olaraq qaytar."""
+        """Read lines from file, return as set."""
         items = set()
         try:
             with open(filepath, "r") as f:
@@ -70,7 +70,7 @@ class FirewallCore:
         return items
 
     def _save_file(self, filepath, items):
-        """Set-i fayla yaz."""
+        """Write set to file."""
         with self._lock:
             with open(filepath, "w") as f:
                 for item in sorted(items):
@@ -78,24 +78,24 @@ class FirewallCore:
         self.stats["last_updated"] = datetime.now().isoformat()
 
     # ─────────────────────────────────────────────
-    # DOMAIN BLOKLAMA
+    # DOMAIN BLOCKING
     # ─────────────────────────────────────────────
 
     def block_domain(self, domain):
-        """Tək domain blokla."""
+        """Block a single domain."""
         domain = domain.strip().lower()
         if not domain:
-            return False, "Domain boş ola bilməz"
+            return False, "Domain cannot be empty"
         if domain in self.whitelist:
-            return False, f"{domain} whitelist-dədir, əvvəlcə oradan silin"
+            return False, f"{domain} is in whitelist, remove it first"
         self.blocked_domains.add(domain)
         self._save_file(BLOCKED_DOMAINS_FILE, self.blocked_domains)
         self.stats["domains_blocked_count"] = len(self.blocked_domains)
-        logger.info(f"Domain bloklandı: {domain}")
-        return True, f"{domain} bloklandı"
+        logger.info(f"Domain blocked: {domain}")
+        return True, f"{domain} blocked"
 
     def block_domains_list(self, domains):
-        """Domain siyahısını blokla."""
+        """Block a list of domains."""
         added = []
         skipped = []
         for domain in domains:
@@ -112,29 +112,29 @@ class FirewallCore:
         return added, skipped
 
     def block_domains_from_file(self, file_content):
-        """Fayl məzmunundan domainləri blokla."""
+        """Block domains from file content."""
         domains = [line.strip() for line in file_content.splitlines() if line.strip()]
         return self.block_domains_list(domains)
 
     def unblock_domain(self, domain):
-        """Domain blokunu götür."""
+        """Unblock a domain."""
         domain = domain.strip().lower()
         if domain in self.blocked_domains:
             self.blocked_domains.discard(domain)
             self._save_file(BLOCKED_DOMAINS_FILE, self.blocked_domains)
             self.stats["domains_blocked_count"] = len(self.blocked_domains)
-            logger.info(f"Domain bloku götürüldü: {domain}")
-            return True, f"{domain} blokdan çıxarıldı"
-        return False, f"{domain} blok siyahısında tapılmadı"
+            logger.info(f"Domain unblocked: {domain}")
+            return True, f"{domain} unblocked"
+        return False, f"{domain} not found in block list"
 
     def is_domain_blocked(self, domain):
-        """Domain bloklanıbmı yoxla (subdomain dəstəyi ilə)."""
+        """Check if domain is blocked (with subdomain support)."""
         domain = domain.strip().lower()
         if domain in self.whitelist:
             return False
         if domain in self.blocked_domains:
             return True
-        # Subdomain yoxlaması: example.com bloklanıbsa, sub.example.com da bloklanır
+        # Subdomain check: if example.com is blocked, sub.example.com is also blocked
         parts = domain.split(".")
         for i in range(1, len(parts)):
             parent = ".".join(parts[i:])
@@ -143,24 +143,24 @@ class FirewallCore:
         return False
 
     # ─────────────────────────────────────────────
-    # IP BLOKLAMA
+    # IP BLOCKING
     # ─────────────────────────────────────────────
 
     def block_ip(self, ip):
-        """Tək IP blokla."""
+        """Block a single IP."""
         ip = ip.strip()
         if not ip:
-            return False, "IP boş ola bilməz"
+            return False, "IP cannot be empty"
         if ip in self.whitelist:
-            return False, f"{ip} whitelist-dədir, əvvəlcə oradan silin"
+            return False, f"{ip} is in whitelist, remove it first"
         self.blocked_ips.add(ip)
         self._save_file(BLOCKED_IPS_FILE, self.blocked_ips)
         self.stats["ips_blocked_count"] = len(self.blocked_ips)
-        logger.info(f"IP bloklandı: {ip}")
-        return True, f"{ip} bloklandı"
+        logger.info(f"IP blocked: {ip}")
+        return True, f"{ip} blocked"
 
     def block_ips_list(self, ips):
-        """IP siyahısını blokla."""
+        """Block a list of IPs."""
         added = []
         skipped = []
         for ip in ips:
@@ -177,23 +177,23 @@ class FirewallCore:
         return added, skipped
 
     def block_ips_from_file(self, file_content):
-        """Fayl məzmunundan IP-ləri blokla."""
+        """Block IPs from file content."""
         ips = [line.strip() for line in file_content.splitlines() if line.strip()]
         return self.block_ips_list(ips)
 
     def unblock_ip(self, ip):
-        """IP blokunu götür."""
+        """Unblock an IP."""
         ip = ip.strip()
         if ip in self.blocked_ips:
             self.blocked_ips.discard(ip)
             self._save_file(BLOCKED_IPS_FILE, self.blocked_ips)
             self.stats["ips_blocked_count"] = len(self.blocked_ips)
-            logger.info(f"IP bloku götürüldü: {ip}")
-            return True, f"{ip} blokdan çıxarıldı"
-        return False, f"{ip} blok siyahısında tapılmadı"
+            logger.info(f"IP unblocked: {ip}")
+            return True, f"{ip} unblocked"
+        return False, f"{ip} not found in block list"
 
     def is_ip_blocked(self, ip):
-        """IP bloklanıbmı yoxla."""
+        """Check if IP is blocked."""
         ip = ip.strip()
         if ip in self.whitelist:
             return False
@@ -204,22 +204,22 @@ class FirewallCore:
     # ─────────────────────────────────────────────
 
     def add_to_whitelist(self, item):
-        """Tək element whitelist-ə əlavə et."""
+        """Add a single item to whitelist."""
         item = item.strip().lower()
         if not item:
-            return False, "Element boş ola bilməz"
-        # Whitelist-ə əlavə ediləndə blok siyahılarından sil
+            return False, "Item cannot be empty"
+        # When added to whitelist, remove from block lists
         self.blocked_domains.discard(item)
         self.blocked_ips.discard(item)
         self.whitelist.add(item)
         self._save_file(WHITELIST_FILE, self.whitelist)
         self._save_file(BLOCKED_DOMAINS_FILE, self.blocked_domains)
         self._save_file(BLOCKED_IPS_FILE, self.blocked_ips)
-        logger.info(f"Whitelist-ə əlavə edildi: {item}")
-        return True, f"{item} whitelist-ə əlavə edildi"
+        logger.info(f"Added to whitelist: {item}")
+        return True, f"{item} added to whitelist"
 
     def add_to_whitelist_list(self, items):
-        """Siyahını whitelist-ə əlavə et."""
+        """Add a list to whitelist."""
         added = []
         for item in items:
             item = item.strip().lower()
@@ -235,26 +235,26 @@ class FirewallCore:
         return added
 
     def add_to_whitelist_from_file(self, file_content):
-        """Fayl məzmunundan whitelist-ə əlavə et."""
+        """Add to whitelist from file content."""
         items = [line.strip() for line in file_content.splitlines() if line.strip()]
         return self.add_to_whitelist_list(items)
 
     def remove_from_whitelist(self, item):
-        """Whitelist-dən sil."""
+        """Remove from whitelist."""
         item = item.strip().lower()
         if item in self.whitelist:
             self.whitelist.discard(item)
             self._save_file(WHITELIST_FILE, self.whitelist)
-            logger.info(f"Whitelist-dən silindi: {item}")
-            return True, f"{item} whitelist-dən silindi"
-        return False, f"{item} whitelist-də tapılmadı"
+            logger.info(f"Removed from whitelist: {item}")
+            return True, f"{item} removed from whitelist"
+        return False, f"{item} not found in whitelist"
 
     # ─────────────────────────────────────────────
-    # STATİSTİKA
+    # STATISTICS
     # ─────────────────────────────────────────────
 
     def get_stats(self):
-        """Statistika məlumatlarını qaytar."""
+        """Return statistics."""
         return {
             "blocked_domains_count": len(self.blocked_domains),
             "blocked_ips_count": len(self.blocked_ips),
@@ -264,15 +264,15 @@ class FirewallCore:
         }
 
     def get_all_blocked_domains(self):
-        """Bütün bloklanmış domainləri qaytar."""
+        """Return all blocked domains."""
         return sorted(self.blocked_domains)
 
     def get_all_blocked_ips(self):
-        """Bütün bloklanmış IP-ləri qaytar."""
+        """Return all blocked IPs."""
         return sorted(self.blocked_ips)
 
     def get_all_whitelist(self):
-        """Bütün whitelist elementlərini qaytar."""
+        """Return all whitelist items."""
         return sorted(self.whitelist)
 
 

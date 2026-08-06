@@ -1,6 +1,6 @@
 """
-VPN İstifadəçi İdarəetmə Modulu
-İstifadəçi əlavə etmə, silmə, aktiv/deaktiv, trafik limiti.
+VPN User Management Module
+User add, remove, activate/deactivate, traffic limits.
 """
 import os
 import json
@@ -15,7 +15,7 @@ USERS_FILE = os.path.join(DATA_DIR, "vpn_users.json")
 
 
 class VPNUserManager:
-    """VPN istifadəçilərini idarə edir."""
+    """Manages VPN users."""
 
     def __init__(self):
         self._lock = threading.Lock()
@@ -30,7 +30,7 @@ class VPNUserManager:
                 json.dump({}, f)
 
     def load(self):
-        """İstifadəçiləri fayldan yüklə."""
+        """Load users from file."""
         try:
             with open(USERS_FILE, "r") as f:
                 self.users = json.load(f)
@@ -38,33 +38,33 @@ class VPNUserManager:
             self.users = {}
 
     def save(self):
-        """İstifadəçiləri fayla yaz."""
+        """Save users to file."""
         with self._lock:
             with open(USERS_FILE, "w") as f:
                 json.dump(self.users, f, indent=2, ensure_ascii=False)
 
     # ─────────────────────────────────────────────
-    # İSTİFADƏÇİ ƏMƏLİYYATLARI
+    # USER OPERATIONS
     # ─────────────────────────────────────────────
 
     def add_user(self, username, password, max_devices=1, traffic_limit_gb=0, expire_date=None):
-        """Yeni istifadəçi əlavə et."""
+        """Add a new user."""
         username = username.strip().lower()
         if not username or not password:
-            return False, "İstifadəçi adı və parol boş ola bilməz"
+            return False, "Username and password cannot be empty"
         if username in self.users:
-            return False, f"{username} artıq mövcuddur"
+            return False, f"{username} already exists"
         if len(password) < 4:
-            return False, "Parol minimum 4 simvol olmalıdır"
+            return False, "Password must be at least 4 characters"
 
         self.users[username] = {
             "id": str(uuid.uuid4()),
             "password_hash": generate_password_hash(password),
             "active": True,
             "max_devices": max_devices,
-            "traffic_limit_gb": traffic_limit_gb,  # 0 = limitsiz
+            "traffic_limit_gb": traffic_limit_gb,  # 0 = unlimited
             "traffic_used_mb": 0,
-            "expire_date": expire_date,  # None = limitsiz
+            "expire_date": expire_date,  # None = unlimited
             "created_at": datetime.now().isoformat(),
             "last_login": None,
             "last_ip": None,
@@ -73,32 +73,32 @@ class VPNUserManager:
             "total_connections": 0,
         }
         self.save()
-        return True, f"{username} əlavə edildi"
+        return True, f"{username} added"
 
     def remove_user(self, username):
-        """İstifadəçini sil."""
+        """Remove a user."""
         username = username.strip().lower()
         if username not in self.users:
-            return False, f"{username} tapılmadı"
+            return False, f"{username} not found"
         del self.users[username]
         self.save()
-        return True, f"{username} silindi"
+        return True, f"{username} removed"
 
     def toggle_user(self, username):
-        """İstifadəçini aktiv/deaktiv et."""
+        """Activate/deactivate a user."""
         username = username.strip().lower()
         if username not in self.users:
-            return False, f"{username} tapılmadı"
+            return False, f"{username} not found"
         self.users[username]["active"] = not self.users[username]["active"]
-        status = "aktivləşdirildi" if self.users[username]["active"] else "deaktiv edildi"
+        status = "activated" if self.users[username]["active"] else "deactivated"
         self.save()
         return True, f"{username} {status}"
 
     def update_user(self, username, max_devices=None, traffic_limit_gb=None, expire_date=None):
-        """İstifadəçi parametrlərini yenilə."""
+        """Update user parameters."""
         username = username.strip().lower()
         if username not in self.users:
-            return False, f"{username} tapılmadı"
+            return False, f"{username} not found"
         if max_devices is not None:
             self.users[username]["max_devices"] = max_devices
         if traffic_limit_gb is not None:
@@ -106,68 +106,68 @@ class VPNUserManager:
         if expire_date is not None:
             self.users[username]["expire_date"] = expire_date
         self.save()
-        return True, f"{username} yeniləndi"
+        return True, f"{username} updated"
 
     def change_password(self, username, new_password):
-        """İstifadəçi parolunu dəyiş."""
+        """Change user password."""
         username = username.strip().lower()
         if username not in self.users:
-            return False, f"{username} tapılmadı"
+            return False, f"{username} not found"
         if len(new_password) < 4:
-            return False, "Parol minimum 4 simvol olmalıdır"
+            return False, "Password must be at least 4 characters"
         self.users[username]["password_hash"] = generate_password_hash(new_password)
         self.save()
-        return True, f"{username} parolu dəyişdirildi"
+        return True, f"{username} password changed"
 
     def reset_traffic(self, username):
-        """İstifadəçinin trafik sayğacını sıfırla."""
+        """Reset user traffic counter."""
         username = username.strip().lower()
         if username not in self.users:
-            return False, f"{username} tapılmadı"
+            return False, f"{username} not found"
         self.users[username]["traffic_used_mb"] = 0
         self.save()
-        return True, f"{username} trafiki sıfırlandı"
+        return True, f"{username} traffic reset"
 
     # ─────────────────────────────────────────────
-    # AUTENTİFİKASİYA
+    # AUTHENTICATION
     # ─────────────────────────────────────────────
 
     def authenticate(self, username, password):
-        """İstifadəçi login yoxlaması."""
+        """User login verification."""
         username = username.strip().lower()
         if username not in self.users:
-            return False, "Yanlış istifadəçi adı və ya parol", None
+            return False, "Incorrect username or password", None
 
         user = self.users[username]
 
         if not user["active"]:
-            return False, "Hesab deaktiv edilib", None
+            return False, "Account is deactivated", None
 
         if not check_password_hash(user["password_hash"], password):
-            return False, "Yanlış istifadəçi adı və ya parol", None
+            return False, "Incorrect username or password", None
 
-        # Müddət yoxlaması
+        # Expiry check
         if user["expire_date"]:
             try:
                 expire = datetime.fromisoformat(user["expire_date"])
                 if datetime.now() > expire:
-                    return False, "Hesab müddəti bitib", None
+                    return False, "Account has expired", None
             except ValueError:
                 pass
 
-        # Trafik limiti yoxlaması
+        # Traffic limit check
         if user["traffic_limit_gb"] > 0:
             used_gb = user["traffic_used_mb"] / 1024
             if used_gb >= user["traffic_limit_gb"]:
-                return False, "Trafik limiti bitib", None
+                return False, "Traffic limit exceeded", None
 
-        # Login uğurlu
+        # Login successful
         user["last_login"] = datetime.now().isoformat()
         user["total_connections"] += 1
         self.save()
 
         token = str(uuid.uuid4())
-        return True, "Giriş uğurlu", {
+        return True, "Login successful", {
             "token": token,
             "username": username,
             "traffic_limit_gb": user["traffic_limit_gb"],
@@ -177,7 +177,7 @@ class VPNUserManager:
         }
 
     def update_connection_status(self, username, connected, ip=None):
-        """Bağlantı statusunu yenilə."""
+        """Update connection status."""
         username = username.strip().lower()
         if username not in self.users:
             return
@@ -193,7 +193,7 @@ class VPNUserManager:
         self.save()
 
     def add_traffic(self, username, bytes_used):
-        """Trafik məlumatını əlavə et."""
+        """Add traffic data."""
         username = username.strip().lower()
         if username not in self.users:
             return
@@ -201,11 +201,11 @@ class VPNUserManager:
         self.save()
 
     # ─────────────────────────────────────────────
-    # SORĞULAR
+    # QUERIES
     # ─────────────────────────────────────────────
 
     def get_all_users(self):
-        """Bütün istifadəçiləri qaytar."""
+        """Return all users."""
         result = []
         for username, data in self.users.items():
             result.append({
@@ -225,7 +225,7 @@ class VPNUserManager:
         return sorted(result, key=lambda x: x["created_at"], reverse=True)
 
     def get_user(self, username):
-        """Tək istifadəçi məlumatı."""
+        """Get single user data."""
         username = username.strip().lower()
         if username not in self.users:
             return None
@@ -236,7 +236,7 @@ class VPNUserManager:
         }
 
     def get_stats(self):
-        """İstifadəçi statistikası."""
+        """User statistics."""
         total = len(self.users)
         active = sum(1 for u in self.users.values() if u["active"])
         connected = sum(1 for u in self.users.values() if u["connected"])

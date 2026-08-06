@@ -1,5 +1,5 @@
 """
-Whitelist routes - tək, siyahı, fayl ilə.
+Whitelist routes - single, list, file.
 """
 from flask import Blueprint, render_template, redirect, url_for, request, flash
 from flask_login import login_required
@@ -19,10 +19,10 @@ def whitelist_page():
 @whitelist_bp.route("/add-single", methods=["POST"])
 @login_required
 def add_single():
-    """Tək element whitelist-ə əlavə et."""
+    """Add a single item to whitelist."""
     item = request.form.get("item", "").strip()
     if not item:
-        flash("Domain və ya IP daxil edin!", "danger")
+        flash("Please enter a domain or IP!", "danger")
         return redirect(url_for("whitelist.whitelist_page"))
 
     success, msg = firewall.add_to_whitelist(item)
@@ -37,10 +37,10 @@ def add_single():
 @whitelist_bp.route("/add-list", methods=["POST"])
 @login_required
 def add_list():
-    """Siyahını whitelist-ə əlavə et (textarea-dan)."""
+    """Add a list to whitelist (from textarea)."""
     items_text = request.form.get("items_list", "").strip()
     if not items_text:
-        flash("Siyahı boşdur!", "danger")
+        flash("List is empty!", "danger")
         return redirect(url_for("whitelist.whitelist_page"))
 
     items = [item.strip() for item in items_text.splitlines() if item.strip()]
@@ -49,23 +49,23 @@ def add_list():
     for item in added:
         engine.apply_whitelist_item(item)
 
-    flash(f"{len(added)} element whitelist-ə əlavə edildi.", "success" if added else "warning")
+    flash(f"{len(added)} items added to whitelist.", "success" if added else "warning")
     return redirect(url_for("whitelist.whitelist_page"))
 
 
 @whitelist_bp.route("/add-file", methods=["POST"])
 @login_required
 def add_file():
-    """Fayldan whitelist-ə əlavə et."""
+    """Add to whitelist from file."""
     file = request.files.get("whitelist_file")
     if not file or file.filename == "":
-        flash("Fayl seçilməyib!", "danger")
+        flash("No file selected!", "danger")
         return redirect(url_for("whitelist.whitelist_page"))
 
     try:
         content = file.read().decode("utf-8")
     except UnicodeDecodeError:
-        flash("Fayl UTF-8 formatında olmalıdır!", "danger")
+        flash("File must be in UTF-8 format!", "danger")
         return redirect(url_for("whitelist.whitelist_page"))
 
     added = firewall.add_to_whitelist_from_file(content)
@@ -73,14 +73,14 @@ def add_file():
     for item in added:
         engine.apply_whitelist_item(item)
 
-    flash(f"{len(added)} element fayldan whitelist-ə əlavə edildi.", "success" if added else "warning")
+    flash(f"{len(added)} items added to whitelist from file.", "success" if added else "warning")
     return redirect(url_for("whitelist.whitelist_page"))
 
 
 @whitelist_bp.route("/remove/<path:item>", methods=["POST"])
 @login_required
 def remove(item):
-    """Whitelist-dən sil."""
+    """Remove from whitelist."""
     success, msg = firewall.remove_from_whitelist(item)
     if success:
         flash(msg, "success")
@@ -92,10 +92,10 @@ def remove(item):
 @whitelist_bp.route("/remove-all", methods=["POST"])
 @login_required
 def remove_all():
-    """Bütün whitelist elementlərini sil."""
+    """Remove all whitelist items."""
     items = firewall.get_all_whitelist()
     count = len(items)
     firewall.whitelist.clear()
     firewall._save_file(WHITELIST_FILE, firewall.whitelist)
-    flash(f"{count} element whitelist-dən silindi!", "success")
+    flash(f"{count} items removed from whitelist!", "success")
     return redirect(url_for("whitelist.whitelist_page"))

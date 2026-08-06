@@ -1,21 +1,21 @@
 {% extends "base.html" %}
-{% block title %}İstifadəçilər - Firewall{% endblock %}
+{% block title %}Users - Firewall{% endblock %}
 
 {% block content %}
 <div class="row mb-4">
     <div class="col-12">
-        <h2><i class="bi bi-people"></i> VPN İstifadəçiləri</h2>
+        <h2><i class="bi bi-people"></i> VPN Users</h2>
         <hr>
     </div>
 </div>
 
-<!-- Statistika -->
+<!-- Statistics -->
 <div class="row mb-4">
     <div class="col-md-3">
         <div class="card bg-primary text-white shadow">
             <div class="card-body text-center">
                 <h4>{{ stats.total_users }}</h4>
-                <small>Ümumi</small>
+                <small>Total</small>
             </div>
         </div>
     </div>
@@ -23,7 +23,7 @@
         <div class="card bg-success text-white shadow">
             <div class="card-body text-center">
                 <h4>{{ stats.active_users }}</h4>
-                <small>Aktiv</small>
+                <small>Active</small>
             </div>
         </div>
     </div>
@@ -31,7 +31,7 @@
         <div class="card bg-warning text-dark shadow">
             <div class="card-body text-center">
                 <h4>{{ stats.inactive_users }}</h4>
-                <small>Deaktiv</small>
+                <small>Inactive</small>
             </div>
         </div>
     </div>
@@ -39,59 +39,59 @@
         <div class="card bg-info text-white shadow">
             <div class="card-body text-center">
                 <h4>{{ stats.connected_now }}</h4>
-                <small>Onlayn</small>
+                <small>Online</small>
             </div>
         </div>
     </div>
 </div>
 
 <div class="row">
-    <!-- Yeni istifadəçi forması -->
+    <!-- New user form -->
     <div class="col-md-4">
         <div class="card shadow mb-3">
             <div class="card-header">
-                <h6 class="mb-0"><i class="bi bi-person-plus"></i> Yeni İstifadəçi</h6>
+                <h6 class="mb-0"><i class="bi bi-person-plus"></i> New User</h6>
             </div>
             <div class="card-body">
                 <form method="POST" action="{{ url_for('users.add_user') }}">
                     <div class="mb-2">
-                        <label class="form-label">İstifadəçi adı</label>
+                        <label class="form-label">Username</label>
                         <input type="text" class="form-control form-control-sm" 
                                name="username" required placeholder="user1">
                     </div>
                     <div class="mb-2">
-                        <label class="form-label">Parol</label>
+                        <label class="form-label">Password</label>
                         <input type="text" class="form-control form-control-sm" 
-                               name="password" required placeholder="min 4 simvol">
+                               name="password" required placeholder="min 4 characters">
                     </div>
                     <div class="mb-2">
-                        <label class="form-label">Max Cihaz</label>
+                        <label class="form-label">Max Devices</label>
                         <input type="number" class="form-control form-control-sm" 
                                name="max_devices" value="1" min="1" max="10">
                     </div>
                     <div class="mb-2">
-                        <label class="form-label">Trafik Limiti (GB, 0=limitsiz)</label>
+                        <label class="form-label">Traffic Limit (GB, 0=unlimited)</label>
                         <input type="number" class="form-control form-control-sm" 
                                name="traffic_limit_gb" value="0" min="0" step="0.1">
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Bitmə Tarixi (boş=limitsiz)</label>
+                        <label class="form-label">Expiry Date (empty=unlimited)</label>
                         <input type="date" class="form-control form-control-sm" 
                                name="expire_date">
                     </div>
                     <button type="submit" class="btn btn-primary btn-sm w-100">
-                        <i class="bi bi-plus-lg"></i> Əlavə Et
+                        <i class="bi bi-plus-lg"></i> Add
                     </button>
                 </form>
             </div>
         </div>
     </div>
 
-    <!-- İstifadəçi siyahısı -->
+    <!-- User list -->
     <div class="col-md-8">
         <div class="card shadow">
             <div class="card-header">
-                <h6 class="mb-0"><i class="bi bi-list-check"></i> İstifadəçilər
+                <h6 class="mb-0"><i class="bi bi-list-check"></i> Users
                     <span class="badge bg-primary">{{ users|length }}</span>
                 </h6>
             </div>
@@ -101,12 +101,12 @@
                 <table class="table table-sm table-hover mb-0">
                     <thead class="table-light">
                         <tr>
-                            <th>İstifadəçi</th>
+                            <th>User</th>
                             <th>Status</th>
-                            <th>Trafik</th>
-                            <th>Müddət</th>
-                            <th>Onlayn</th>
-                            <th>Əməliyyatlar</th>
+                            <th>Traffic</th>
+                            <th>Expiry</th>
+                            <th>Online</th>
+                            <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -118,9 +118,9 @@
                             </td>
                             <td>
                                 {% if user.active %}
-                                <span class="badge bg-success">Aktiv</span>
+                                <span class="badge bg-success">Active</span>
                                 {% else %}
-                                <span class="badge bg-secondary">Deaktiv</span>
+                                <span class="badge bg-secondary">Inactive</span>
                                 {% endif %}
                             </td>
                             <td>
@@ -128,14 +128,14 @@
                                 {% if user.traffic_limit_gb > 0 %}
                                 / {{ user.traffic_limit_gb }} GB
                                 {% else %}
-                                <small class="text-muted">(limitsiz)</small>
+                                <small class="text-muted">(unlimited)</small>
                                 {% endif %}
                             </td>
                             <td>
                                 {% if user.expire_date %}
                                 {{ user.expire_date }}
                                 {% else %}
-                                <small class="text-muted">Limitsiz</small>
+                                <small class="text-muted">Unlimited</small>
                                 {% endif %}
                             </td>
                             <td>
@@ -148,18 +148,18 @@
                             <td>
                                 <div class="btn-group btn-group-sm">
                                     <form method="POST" action="{{ url_for('users.toggle_user', username=user.username) }}">
-                                        <button type="submit" class="btn btn-outline-warning btn-sm" title="Aktiv/Deaktiv">
+                                        <button type="submit" class="btn btn-outline-warning btn-sm" title="Toggle Active">
                                             <i class="bi bi-toggle-on"></i>
                                         </button>
                                     </form>
                                     <form method="POST" action="{{ url_for('users.reset_traffic', username=user.username) }}">
-                                        <button type="submit" class="btn btn-outline-info btn-sm" title="Trafik sıfırla">
+                                        <button type="submit" class="btn btn-outline-info btn-sm" title="Reset Traffic">
                                             <i class="bi bi-arrow-counterclockwise"></i>
                                         </button>
                                     </form>
                                     <form method="POST" action="{{ url_for('users.delete_user', username=user.username) }}"
-                                          onsubmit="return confirm('{{ user.username }} silinsin?')">
-                                        <button type="submit" class="btn btn-outline-danger btn-sm" title="Sil">
+                                          onsubmit="return confirm('Delete {{ user.username }}?')">
+                                        <button type="submit" class="btn btn-outline-danger btn-sm" title="Delete">
                                             <i class="bi bi-trash"></i>
                                         </button>
                                     </form>
@@ -173,7 +173,7 @@
                 {% else %}
                 <div class="text-center text-muted py-4">
                     <i class="bi bi-people" style="font-size: 3rem;"></i>
-                    <p class="mt-2">Hələ istifadəçi yoxdur</p>
+                    <p class="mt-2">No users yet</p>
                 </div>
                 {% endif %}
             </div>

@@ -1,5 +1,5 @@
 """
-VPN İstifadəçi İdarəetmə routes - Admin panel.
+VPN User Management routes - Admin panel.
 """
 from flask import Blueprint, render_template, redirect, url_for, request, flash
 from flask_login import login_required
@@ -19,7 +19,7 @@ def users_page():
 @users_bp.route("/add", methods=["POST"])
 @login_required
 def add_user():
-    """Yeni istifadəçi əlavə et."""
+    """Add a new user."""
     username = request.form.get("username", "").strip()
     password = request.form.get("password", "").strip()
     max_devices = int(request.form.get("max_devices", 1))
@@ -27,7 +27,7 @@ def add_user():
     expire_date = request.form.get("expire_date", "").strip() or None
 
     if not username or not password:
-        flash("İstifadəçi adı və parol daxil edin!", "danger")
+        flash("Please enter username and password!", "danger")
         return redirect(url_for("users.users_page"))
 
     success, msg = vpn_users.add_user(
@@ -40,7 +40,7 @@ def add_user():
 @users_bp.route("/toggle/<username>", methods=["POST"])
 @login_required
 def toggle_user(username):
-    """İstifadəçini aktiv/deaktiv et."""
+    """Activate/deactivate a user."""
     success, msg = vpn_users.toggle_user(username)
     flash(msg, "success" if success else "danger")
     return redirect(url_for("users.users_page"))
@@ -49,7 +49,7 @@ def toggle_user(username):
 @users_bp.route("/delete/<username>", methods=["POST"])
 @login_required
 def delete_user(username):
-    """İstifadəçini sil."""
+    """Delete a user."""
     success, msg = vpn_users.remove_user(username)
     flash(msg, "success" if success else "danger")
     return redirect(url_for("users.users_page"))
@@ -58,10 +58,10 @@ def delete_user(username):
 @users_bp.route("/change-password/<username>", methods=["POST"])
 @login_required
 def change_password(username):
-    """İstifadəçi parolunu dəyiş."""
+    """Change user password."""
     new_password = request.form.get("new_password", "").strip()
     if not new_password:
-        flash("Yeni parol daxil edin!", "danger")
+        flash("Please enter a new password!", "danger")
         return redirect(url_for("users.users_page"))
     success, msg = vpn_users.change_password(username, new_password)
     flash(msg, "success" if success else "danger")
@@ -71,7 +71,7 @@ def change_password(username):
 @users_bp.route("/reset-traffic/<username>", methods=["POST"])
 @login_required
 def reset_traffic(username):
-    """Trafik sayğacını sıfırla."""
+    """Reset traffic counter."""
     success, msg = vpn_users.reset_traffic(username)
     flash(msg, "success" if success else "danger")
     return redirect(url_for("users.users_page"))
@@ -80,7 +80,7 @@ def reset_traffic(username):
 @users_bp.route("/update/<username>", methods=["POST"])
 @login_required
 def update_user(username):
-    """İstifadəçi parametrlərini yenilə."""
+    """Update user parameters."""
     max_devices = int(request.form.get("max_devices", 1))
     traffic_limit_gb = float(request.form.get("traffic_limit_gb", 0))
     expire_date = request.form.get("expire_date", "").strip() or None

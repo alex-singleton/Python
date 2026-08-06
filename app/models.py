@@ -1,5 +1,5 @@
 """
-İstifadəçi modeli - Flask-Login üçün.
+User model - for Flask-Login.
 """
 import os
 import json
@@ -12,7 +12,7 @@ ADMIN_FILE = os.path.join(DATA_DIR, "admin.json")
 
 
 class Admin(UserMixin):
-    """Admin istifadəçi sinfi."""
+    """Admin user class."""
 
     def __init__(self, id, username, password_hash):
         self.id = id
@@ -24,10 +24,10 @@ class Admin(UserMixin):
 
     @staticmethod
     def get_admin():
-        """Admin məlumatlarını yüklə, yoxdursa default yarat."""
+        """Load admin data, create default if not exists."""
         os.makedirs(DATA_DIR, exist_ok=True)
         if not os.path.exists(ADMIN_FILE):
-            # Default admin yarat
+            # Create default admin
             default_admin = {
                 "id": "1",
                 "username": "admin",
@@ -43,7 +43,7 @@ class Admin(UserMixin):
 
     @staticmethod
     def update_password(new_password):
-        """Admin parolunu yenilə."""
+        """Update admin password."""
         admin = Admin.get_admin()
         admin.password_hash = generate_password_hash(new_password)
         data = {
@@ -57,7 +57,7 @@ class Admin(UserMixin):
 
     @staticmethod
     def update_username(new_username):
-        """Admin istifadəçi adını yenilə."""
+        """Update admin username."""
         admin = Admin.get_admin()
         data = {
             "id": admin.id,

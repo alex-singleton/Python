@@ -15,7 +15,7 @@ RestartSec=5
 StandardOutput=journal
 StandardError=journal
 
-# Mühit dəyişənləri
+# Environment variables
 Environment=FIREWALL_SECRET_KEY=your-secret-key-here
 Environment=FIREWALL_DEBUG=False
 

@@ -4,31 +4,31 @@ echo   VPN Client - EXE Build Script
 echo ==========================================
 echo.
 
-:: Python yoxla
+:: Check Python
 python --version >nul 2>&1
 if %errorlevel% neq 0 (
-    echo [XETA] Python tapilmadi! Python qurasdirin.
+    echo [ERROR] Python not found! Please install Python.
     echo https://www.python.org/downloads/
     pause
     exit /b 1
 )
 
-:: Lazimi paketleri qurasdır
-echo [1/3] Paketler qurasdirılir...
+:: Install required packages
+echo [1/3] Installing packages...
 pip install PyQt5 requests PySocks pyinstaller --quiet
 
-:: EXE yarat
-echo [2/3] EXE yaradilir...
+:: Build EXE
+echo [2/3] Building EXE...
 pyinstaller --onefile --noconsole --name "VPNClient" --clean vpn_client.py
 
-:: Config faylini kopyala
-echo [3/3] Fayl kopyalanir...
+:: Copy config file
+echo [3/3] Copying files...
 copy config.py dist\config.py >nul 2>&1
 
 echo.
 echo ==========================================
-echo   HAZIRDIR!
+echo   DONE!
 echo   EXE: dist\VPNClient.exe
-echo   dist\ qovlugunu istifadeciye verin.
+echo   Give the dist\ folder to the user.
 echo ==========================================
 pause

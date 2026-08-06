@@ -1,5 +1,5 @@
 """
-Auth routes - Admin giriş/çıxış.
+Auth routes - Admin login/logout.
 """
 from flask import Blueprint, render_template, redirect, url_for, request, flash
 from flask_login import login_user, logout_user, login_required, current_user
@@ -32,7 +32,7 @@ def login():
             next_page = request.args.get("next")
             return redirect(next_page or url_for("dashboard.index"))
         else:
-            flash("Yanlış istifadəçi adı və ya parol!", "danger")
+            flash("Incorrect username or password!", "danger")
 
     return render_template("login.html")
 
@@ -41,7 +41,7 @@ def login():
 @login_required
 def logout():
     logout_user()
-    flash("Uğurla çıxış etdiniz.", "success")
+    flash("Successfully logged out.", "success")
     return redirect(url_for("auth.login"))
 
 
@@ -55,14 +55,14 @@ def change_password():
 
         admin = Admin.get_admin()
         if not admin.check_password(current_password):
-            flash("Cari parol yanlışdır!", "danger")
+            flash("Current password is incorrect!", "danger")
         elif new_password != confirm_password:
-            flash("Yeni parollar uyğun gəlmir!", "danger")
+            flash("New passwords do not match!", "danger")
         elif len(new_password) < 6:
-            flash("Parol minimum 6 simvol olmalıdır!", "danger")
+            flash("Password must be at least 6 characters!", "danger")
         else:
             Admin.update_password(new_password)
-            flash("Parol uğurla dəyişdirildi!", "success")
+            flash("Password changed successfully!", "success")
             return redirect(url_for("dashboard.index"))
 
     return render_template("change_password.html")

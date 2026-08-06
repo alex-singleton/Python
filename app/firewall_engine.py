@@ -1,8 +1,8 @@
 """
-Firewall Engine - iptables inteqrasiyası və DNS/SNI intercept.
-HTTPS trafikini SNI (Server Name Indication) vasitəsilə bloklayır.
-HTTP trafikini Host header vasitəsilə bloklayır.
-IP-ləri iptables vasitəsilə bloklayır.
+Firewall Engine - iptables integration and DNS/SNI intercept.
+Blocks HTTPS traffic via SNI (Server Name Indication).
+Blocks HTTP traffic via Host header.
+Blocks IPs via iptables.
 """
 import subprocess
 import logging
@@ -17,7 +17,7 @@ IP6TABLES = "/sbin/ip6tables"
 
 
 class FirewallEngine:
-    """iptables və sistem səviyyəsində firewall idarəetməsi."""
+    """iptables and system-level firewall management."""
 
     def __init__(self, interface="tun0"):
         self.interface = interface
@@ -25,63 +25,63 @@ class FirewallEngine:
         self._lock = threading.Lock()
 
     # ─────────────────────────────────────────────
-    # iptables ZƏNCİR İDARƏETMƏSİ
+    # iptables CHAIN MANAGEMENT
     # ─────────────────────────────────────────────
 
     def setup_chains(self):
-        """Firewall chain-lərini yarat."""
+        """Create firewall chains."""
         try:
-            # Custom chain yarat (əgər yoxdursa)
+            # Create custom chain (if not exists)
             self._run_iptables(["-N", self.chain_name], ignore_errors=True)
-            # FORWARD chain-dən custom chain-ə yönləndir
+            # Redirect from FORWARD chain to custom chain
             self._run_iptables(["-C", "FORWARD", "-j", self.chain_name], ignore_errors=True)
             if self._last_returncode != 0:
                 self._run_iptables(["-I", "FORWARD", "1", "-j", self.chain_name])
-            logger.info("Firewall chain-ləri quruldu")
+            logger.info("Firewall chains set up")
             return True
         except Exception as e:
-            logger.error(f"Chain qurulması uğursuz: {e}")
+            logger.error(f"Chain setup failed: {e}")
             return False
 
     def cleanup_chains(self):
-        """Firewall chain-lərini təmizlə."""
+        """Clean up firewall chains."""
         try:
             self._run_iptables(["-D", "FORWARD", "-j", self.chain_name], ignore_errors=True)
             self._run_iptables(["-F", self.chain_name], ignore_errors=True)
             self._run_iptables(["-X", self.chain_name], ignore_errors=True)
-            logger.info("Firewall chain-ləri təmizləndi")
+            logger.info("Firewall chains cleaned up")
             return True
         except Exception as e:
-            logger.error(f"Chain təmizlənməsi uğursuz: {e}")
+            logger.error(f"Chain cleanup failed: {e}")
             return False
 
     # ─────────────────────────────────────────────
-    # IP BLOKLAMA (iptables)
+    # IP BLOCKING (iptables)
     # ─────────────────────────────────────────────
 
     def apply_ip_block(self, ip):
-        """IP-ni iptables ilə blokla."""
+        """Block an IP with iptables."""
         with self._lock:
-            # Əvvəlcə mövcud olub-olmadığını yoxla
+            # Check if already exists
             check = self._run_iptables(
                 ["-C", self.chain_name, "-d", ip, "-j", "DROP"],
                 ignore_errors=True
             )
             if self._last_returncode == 0:
-                return True  # Artıq mövcuddur
+                return True  # Already exists
 
             result = self._run_iptables(
                 ["-A", self.chain_name, "-d", ip, "-j", "DROP"]
             )
-            # Source IP-ni də blokla
+            # Also block source IP
             self._run_iptables(
                 ["-A", self.chain_name, "-s", ip, "-j", "DROP"]
             )
-            logger.info(f"iptables: IP bloklandı - {ip}")
+            logger.info(f"iptables: IP blocked - {ip}")
             return result
 
     def remove_ip_block(self, ip):
-        """IP blokunu iptables-dan götür."""
+        """Remove IP block from iptables."""
         with self._lock:
             self._run_iptables(
                 ["-D", self.chain_name, "-d", ip, "-j", "DROP"],
@@ -91,37 +91,37 @@ class FirewallEngine:
                 ["-D", self.chain_name, "-s", ip, "-j", "DROP"],
                 ignore_errors=True
             )
-            logger.info(f"iptables: IP bloku götürüldü - {ip}")
+            logger.info(f"iptables: IP unblocked - {ip}")
             return True
 
     def apply_all_ip_blocks(self):
-        """Bütün bloklanmış IP-ləri iptables-a tətbiq et."""
+        """Apply all blocked IPs to iptables."""
         for ip in firewall.get_all_blocked_ips():
             self.apply_ip_block(ip)
-        logger.info(f"Bütün IP blokları tətbiq edildi: {len(firewall.blocked_ips)} ədəd")
+        logger.info(f"All IP blocks applied: {len(firewall.blocked_ips)} total")
 
     # ─────────────────────────────────────────────
-    # DOMAIN BLOKLAMA (iptables string match + DNS)
+    # DOMAIN BLOCKING (iptables string match + DNS)
     # ─────────────────────────────────────────────
 
     def apply_domain_block(self, domain):
         """
-        Domain-i blokla:
-        1. iptables string match ilə SNI-da domain adını axtar (HTTPS)
-        2. DNS sorğularını blokla
+        Block a domain:
+        1. iptables string match for SNI domain name (HTTPS)
+        2. Block DNS queries
         """
         with self._lock:
-            # HTTPS - TLS SNI vasitəsilə bloklama
-            # SNI extension-da domain adını string match ilə tap
+            # HTTPS - Block via TLS SNI
+            # Find domain name in SNI extension via string match
             self._run_iptables([
                 "-A", self.chain_name,
                 "-p", "tcp", "--dport", "443",
                 "-m", "string", "--string", domain,
-                "--algo", "bm",  # Boyer-Moore alqoritmi
+                "--algo", "bm",  # Boyer-Moore algorithm
                 "-j", "DROP"
             ], ignore_errors=True)
 
-            # HTTP - Host header vasitəsilə bloklama
+            # HTTP - Block via Host header
             self._run_iptables([
                 "-A", self.chain_name,
                 "-p", "tcp", "--dport", "80",
@@ -130,7 +130,7 @@ class FirewallEngine:
                 "-j", "DROP"
             ], ignore_errors=True)
 
-            # DNS sorğularını blokla (domain adına görə)
+            # DNS - Block queries for domain name
             self._run_iptables([
                 "-A", self.chain_name,
                 "-p", "udp", "--dport", "53",
@@ -139,11 +139,11 @@ class FirewallEngine:
                 "-j", "DROP"
             ], ignore_errors=True)
 
-            logger.info(f"iptables: Domain bloklandı - {domain}")
+            logger.info(f"iptables: Domain blocked - {domain}")
             return True
 
     def remove_domain_block(self, domain):
-        """Domain blokunu götür."""
+        """Remove domain block."""
         with self._lock:
             # HTTPS
             self._run_iptables([
@@ -172,23 +172,23 @@ class FirewallEngine:
                 "-j", "DROP"
             ], ignore_errors=True)
 
-            logger.info(f"iptables: Domain bloku götürüldü - {domain}")
+            logger.info(f"iptables: Domain unblocked - {domain}")
             return True
 
     def apply_all_domain_blocks(self):
-        """Bütün bloklanmış domainləri iptables-a tətbiq et."""
+        """Apply all blocked domains to iptables."""
         for domain in firewall.get_all_blocked_domains():
             self.apply_domain_block(domain)
-        logger.info(f"Bütün domain blokları tətbiq edildi: {len(firewall.blocked_domains)} ədəd")
+        logger.info(f"All domain blocks applied: {len(firewall.blocked_domains)} total")
 
     # ─────────────────────────────────────────────
-    # WHITELIST (iptables ACCEPT qaydaları)
+    # WHITELIST (iptables ACCEPT rules)
     # ─────────────────────────────────────────────
 
     def apply_whitelist_item(self, item):
-        """Whitelist elementini iptables-a əlavə et (ACCEPT)."""
+        """Add whitelist item to iptables (ACCEPT)."""
         with self._lock:
-            # IP formatındadırsa
+            # If IP format
             if self._is_ip(item):
                 self._run_iptables([
                     "-I", self.chain_name, "1",
@@ -199,7 +199,7 @@ class FirewallEngine:
                     "-s", item, "-j", "ACCEPT"
                 ], ignore_errors=True)
             else:
-                # Domain - bütün portlarda ACCEPT
+                # Domain - ACCEPT on all ports
                 self._run_iptables([
                     "-I", self.chain_name, "1",
                     "-m", "string", "--string", item,
@@ -209,40 +209,40 @@ class FirewallEngine:
             return True
 
     def apply_all_whitelist(self):
-        """Bütün whitelist elementlərini tətbiq et."""
+        """Apply all whitelist items."""
         for item in firewall.get_all_whitelist():
             self.apply_whitelist_item(item)
-        logger.info(f"Whitelist tətbiq edildi: {len(firewall.whitelist)} ədəd")
+        logger.info(f"Whitelist applied: {len(firewall.whitelist)} total")
 
     # ─────────────────────────────────────────────
-    # TAM SİNXRONİZASİYA
+    # FULL SYNCHRONIZATION
     # ─────────────────────────────────────────────
 
     def sync_all_rules(self):
-        """Bütün qaydaları iptables ilə sinxronlaşdır."""
-        # Əvvəlcə chain-i təmizlə
+        """Synchronize all rules with iptables."""
+        # First flush the chain
         self._run_iptables(["-F", self.chain_name], ignore_errors=True)
-        # Whitelist-i əvvəl tətbiq et (prioritet)
+        # Apply whitelist first (priority)
         self.apply_all_whitelist()
-        # Sonra bloklamaları
+        # Then apply blocks
         self.apply_all_ip_blocks()
         self.apply_all_domain_blocks()
-        logger.info("Bütün qaydalar sinxronlaşdırıldı")
+        logger.info("All rules synchronized")
         return True
 
     def get_current_rules(self):
-        """Hazırki iptables qaydalarını göstər."""
+        """Show current iptables rules."""
         try:
             result = subprocess.run(
                 [IPTABLES, "-L", self.chain_name, "-n", "--line-numbers"],
                 capture_output=True, text=True, timeout=10
             )
-            return result.stdout if result.returncode == 0 else "Chain mövcud deyil"
+            return result.stdout if result.returncode == 0 else "Chain does not exist"
         except Exception as e:
-            return f"Xəta: {e}"
+            return f"Error: {e}"
 
     def get_status(self):
-        """Firewall engine statusunu qaytar."""
+        """Return firewall engine status."""
         rules = self.get_current_rules()
         rule_count = len([l for l in rules.splitlines() if l.strip() and not l.startswith("Chain") and not l.startswith("num")])
         return {
@@ -253,11 +253,11 @@ class FirewallEngine:
         }
 
     # ─────────────────────────────────────────────
-    # YARDIMÇI METODLAR
+    # HELPER METHODS
     # ─────────────────────────────────────────────
 
     def _run_iptables(self, args, ignore_errors=False):
-        """iptables əmrini icra et."""
+        """Execute an iptables command."""
         cmd = [IPTABLES] + args
         try:
             result = subprocess.run(
@@ -265,7 +265,7 @@ class FirewallEngine:
             )
             self._last_returncode = result.returncode
             if result.returncode != 0 and not ignore_errors:
-                logger.warning(f"iptables xətası: {' '.join(cmd)} -> {result.stderr}")
+                logger.warning(f"iptables error: {' '.join(cmd)} -> {result.stderr}")
                 return False
             return True
         except subprocess.TimeoutExpired:
@@ -273,13 +273,13 @@ class FirewallEngine:
             self._last_returncode = -1
             return False
         except FileNotFoundError:
-            logger.error("iptables tapılmadı. Root hüquqları lazımdır.")
+            logger.error("iptables not found. Root privileges required.")
             self._last_returncode = -1
             return False
 
     @staticmethod
     def _is_ip(item):
-        """Elementin IP formatında olub-olmadığını yoxla."""
+        """Check if item is in IP format."""
         parts = item.split(".")
         if len(parts) == 4:
             try:
